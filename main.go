@@ -16,7 +16,6 @@ func main() {
 	router := mux.NewRouter()
 
 	//routes (order matters)
-	router.HandleFunc("/api/time", timeHandler).Queries("tz", "{tz:[A-Za-z\\d\\/\\+\\-\\_]+}")
 	router.HandleFunc("/api/time", timeHandler)
 
 	//server
