@@ -15,7 +15,8 @@ type CurrentTime struct {
 func main() {
 	router := mux.NewRouter()
 
-	//routes
+	//routes (order matters)
+	router.HandleFunc("/api/time", timeHandler).Queries("tz", "{tz:[A-Za-z\\d\\/\\+\\-\\_]+}")
 	router.HandleFunc("/api/time", timeHandler)
 
 	//server
@@ -26,8 +27,19 @@ func main() {
 }
 
 func timeHandler(w http.ResponseWriter, r *http.Request) {
-	current := CurrentTime{time.Now().Format("2006-01-02 15:04:05 +0000 UTC")}
+	var current CurrentTime
+	tz := r.URL.Query().Get("tz")
+
+	loc, err := time.LoadLocation(tz) //if tz param not provided in the URL or tz param value is "", returns UTC
+	if err != nil {                   //tz is invalid
+		http.Error(w, "invalid timezone", 404)
+		return
+	}
+
+	current = CurrentTime{time.Now().In(loc).String()}
 
 	w.Header().Add("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(current)
+	if err = json.NewEncoder(w).Encode(current); err != nil {
+		http.Error(w, "json encoding failed", 500)
+	}
 }
