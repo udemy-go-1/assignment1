@@ -5,6 +5,8 @@ import (
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 )
 
@@ -26,19 +28,51 @@ func main() {
 }
 
 func timeHandler(w http.ResponseWriter, r *http.Request) {
-	var current CurrentTime
-	tz := r.URL.Query().Get("tz")
+	if values := r.URL.Query(); len(values) == 0 || values.Get("tz") == "" {
+		getCurrentTime(w)
+	} else {
+		getTimeZones(w, values)
+	}
+}
 
-	loc, err := time.LoadLocation(tz) //if tz param not provided in the URL or tz param value is "", returns UTC
-	if err != nil {                   //tz is invalid
-		http.Error(w, "invalid timezone", 404)
+//tz param not provided in the URL or tz param value is ""
+func getCurrentTime(w http.ResponseWriter) {
+	loc, err := time.LoadLocation("UTC")
+	if err != nil {
+		http.Error(w, "failed to get UTC location", 404)
 		return
 	}
-
-	current = CurrentTime{time.Now().In(loc).String()}
+	current := CurrentTime{time.Now().In(loc).String()}
 
 	w.Header().Add("Content-Type", "application/json")
-	if err = json.NewEncoder(w).Encode(current); err != nil {
+	if json.NewEncoder(w).Encode(current) != nil {
 		http.Error(w, "json encoding failed", 500)
+	}
+}
+
+//example path: /api/time?tz=America/New_York,Asia/Kolkata
+func getTimeZones(w http.ResponseWriter, v url.Values) {
+	tz := strings.Split(v.Get("tz"), ",") //slice of tz param values
+
+	current := make(map[string]string)
+
+	for i := 0; i < len(tz); i++ {
+		loc, err := time.LoadLocation(tz[i])
+		if err != nil { //tz is invalid
+			http.Error(w, "invalid timezone", 404)
+			return
+		}
+		current[tz[i]] = time.Now().In(loc).String()
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	b, err := json.Marshal(current)
+	if err != nil {
+		http.Error(w, "json encoding failed", 500)
+		return
+	}
+	_, err = w.Write(b)
+	if err != nil {
+		http.Error(w, "failed to write response", 500)
 	}
 }
