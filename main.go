@@ -28,18 +28,38 @@ func main() {
 }
 
 func timeHandler(w http.ResponseWriter, r *http.Request) {
-	if values := r.URL.Query(); len(values) == 0 || values.Get("tz") == "" {
+	timeZones := parseTimeZones(r.URL.Query())
+
+	if len(timeZones) == 0 {
 		getCurrentTime(w)
 	} else {
-		getTimeZones(w, values)
+		getTimeZones(w, timeZones)
 	}
 }
 
-//tz param not provided in the URL or tz param value is ""
+// Returns empty slice if tz param is not provided in the URL, or tz param value is "" or made up of "".
+// Assumes multiple timezones are given as a comma-separated value for the tz query param.
+// Example: /api/time?tz=America/New_York,Asia/Kolkata
+func parseTimeZones(v url.Values) []string {
+	tz := make([]string, 0)
+
+	if len(v) == 0 {
+		return tz
+	}
+
+	raw := strings.Split(v.Get("tz"), ",")
+	for _, r := range raw {
+		if len(r) > 0 {
+			tz = append(tz, r)
+		}
+	}
+	return tz
+}
+
 func getCurrentTime(w http.ResponseWriter) {
 	loc, err := time.LoadLocation("UTC")
 	if err != nil {
-		http.Error(w, "failed to get UTC location", 404)
+		http.Error(w, "failed to get UTC location", 500)
 		return
 	}
 	current := CurrentTime{time.Now().In(loc).String()}
@@ -50,10 +70,7 @@ func getCurrentTime(w http.ResponseWriter) {
 	}
 }
 
-//example path: /api/time?tz=America/New_York,Asia/Kolkata
-func getTimeZones(w http.ResponseWriter, v url.Values) {
-	tz := strings.Split(v.Get("tz"), ",") //slice of tz param values
-
+func getTimeZones(w http.ResponseWriter, tz []string) {
 	current := make(map[string]string)
 
 	for i := 0; i < len(tz); i++ {
