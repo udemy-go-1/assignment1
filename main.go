@@ -2,23 +2,20 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 )
 
-type CurrentTime struct {
-	Current string `json:"current_time"`
-}
-
+//Final version
 func main() {
 	router := mux.NewRouter()
 
-	//routes (order matters)
-	router.HandleFunc("/api/time", timeHandler)
+	//register route
+	router.HandleFunc("/api/time", timeHandler).Methods(http.MethodGet)
 
 	//server
 	err := http.ListenAndServe("localhost:8080", router)
@@ -28,68 +25,46 @@ func main() {
 }
 
 func timeHandler(w http.ResponseWriter, r *http.Request) {
-	timeZones := parseTimeZones(r.URL.Query())
+	result := make(map[string]string)
 
-	if len(timeZones) == 0 {
-		getCurrentTime(w)
+	q := r.URL.Query()
+
+	if len(q["tz"]) == 0 {
+		loc, _ := time.LoadLocation("UTC")
+
+		result["current_time"] = fmt.Sprint(time.Now().In(loc))
 	} else {
-		getTimeZones(w, timeZones)
-	}
-}
+		params := strings.Split(q["tz"][0], ",")
 
-// Returns empty slice if tz param is not provided in the URL, or tz param value is "" or made up of "".
-// Assumes multiple timezones are given as a comma-separated value for the tz query param.
-// Example: /api/time?tz=America/New_York,Asia/Kolkata
-func parseTimeZones(v url.Values) []string {
-	tz := make([]string, 0)
+		for _, v := range params {
+			loc, err := time.LoadLocation(v)
+			if err != nil {
+				http.Error(w, "invalid timezone", http.StatusNotFound)
+				return
+			}
 
-	if len(v) == 0 {
-		return tz
-	}
-
-	raw := strings.Split(v.Get("tz"), ",")
-	for _, r := range raw {
-		if len(r) > 0 {
-			tz = append(tz, r)
+			result[v] = fmt.Sprint(time.Now().In(loc))
 		}
-	}
-	return tz
-}
-
-func getCurrentTime(w http.ResponseWriter) {
-	loc, err := time.LoadLocation("UTC")
-	if err != nil {
-		http.Error(w, "failed to get UTC location", 500)
-		return
-	}
-	current := CurrentTime{time.Now().In(loc).String()}
-
-	w.Header().Add("Content-Type", "application/json")
-	if json.NewEncoder(w).Encode(current) != nil {
-		http.Error(w, "json encoding failed", 500)
-	}
-}
-
-func getTimeZones(w http.ResponseWriter, tz []string) {
-	current := make(map[string]string)
-
-	for i := 0; i < len(tz); i++ {
-		loc, err := time.LoadLocation(tz[i])
-		if err != nil { //tz is invalid
-			http.Error(w, "invalid timezone", 404)
-			return
-		}
-		current[tz[i]] = time.Now().In(loc).String()
 	}
 
 	w.Header().Add("Content-Type", "application/json")
-	b, err := json.Marshal(current)
-	if err != nil {
-		http.Error(w, "json encoding failed", 500)
-		return
-	}
-	_, err = w.Write(b)
-	if err != nil {
-		http.Error(w, "failed to write response", 500)
-	}
+	json.NewEncoder(w).Encode(result)
 }
+
+//Notes
+//Only register 1 route!
+//Other requirements have to do with query params, not a different route altogether
+//
+//Don't use CurrentTime struct, use a map as result instead.
+//So can set json field names (struct only allows 1 fixed struct tag e.g. "current_time")
+//
+//r.URL.Query()
+//Returns map of string : slice of string
+//
+//if
+//No query params given --> url is /api/time
+//else
+//Query params given --> url is /api/time?tz=...
+//
+//for _, v := range params
+//For each index (ignored), value in the slice

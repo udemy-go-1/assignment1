@@ -1,0 +1,99 @@
+//main.go
+
+/*
+package main
+
+import (
+	"encoding/json"
+	"github.com/gorilla/mux"
+	"log"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
+)
+
+type CurrentTime struct {
+	Current string `json:"current_time"`
+}
+
+func main() {
+	router := mux.NewRouter()
+
+	//routes (order matters)
+	router.HandleFunc("/api/time", timeHandler)
+
+	//server
+	err := http.ListenAndServe("localhost:8080", router)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func timeHandler(w http.ResponseWriter, r *http.Request) {
+	timeZones := parseTimeZones(r.URL.Query())
+
+	if len(timeZones) == 0 {
+		getCurrentTime(w)
+	} else {
+		getTimeZones(w, timeZones)
+	}
+}
+
+// Returns empty slice if tz param is not provided in the URL, or tz param value is "" or made up of "".
+// Assumes multiple timezones are given as a comma-separated value for the tz query param.
+// Example: /api/time?tz=America/New_York,Asia/Kolkata
+func parseTimeZones(v url.Values) []string {
+	tz := make([]string, 0)
+
+	if len(v) == 0 {
+		return tz
+	}
+
+	raw := strings.Split(v.Get("tz"), ",")
+	for _, r := range raw {
+		if len(r) > 0 {
+			tz = append(tz, r)
+		}
+	}
+	return tz
+}
+
+func getCurrentTime(w http.ResponseWriter) {
+	loc, err := time.LoadLocation("UTC")
+	if err != nil {
+		http.Error(w, "failed to get UTC location", 500)
+		return
+	}
+	current := CurrentTime{time.Now().In(loc).String()}
+
+	w.Header().Add("Content-Type", "application/json")
+	if json.NewEncoder(w).Encode(current) != nil {
+		http.Error(w, "json encoding failed", 500)
+	}
+}
+
+func getTimeZones(w http.ResponseWriter, tz []string) {
+	current := make(map[string]string)
+
+	for i := 0; i < len(tz); i++ {
+		loc, err := time.LoadLocation(tz[i])
+		if err != nil { //tz is invalid
+			http.Error(w, "invalid timezone", 404)
+			return
+		}
+		current[tz[i]] = time.Now().In(loc).String()
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	b, err := json.Marshal(current)
+	if err != nil {
+		http.Error(w, "json encoding failed", 500)
+		return
+	}
+	_, err = w.Write(b)
+	if err != nil {
+		http.Error(w, "failed to write response", 500)
+	}
+}
+*/

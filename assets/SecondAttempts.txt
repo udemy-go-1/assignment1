@@ -1,0 +1,96 @@
+//Attempt 2
+/*
+	q := r.URL.Query()
+	if q["tz"] == nil {
+		loc, _ := time.LoadLocation("UTC")
+		currentTimes = append(currentTimes, CurrentTime{fmt.Sprint(time.Now().In(loc))})
+	} else {
+		for _, v := range q["tz"] {
+			loc, err := time.LoadLocation(v)
+			if err != nil {
+				http.Error(w, "invalid timezone", http.StatusNotFound)
+				return
+			}
+			currentTimes = append(currentTimes, CurrentTime{fmt.Sprint(time.Now().In(loc))})
+		}
+	}
+*/
+
+//Mistake: need to split query params instead of get entire value of key "tz"!
+//e.g. http://localhost:8080/api/time?tz=America/New_York,Asia/Kolkata
+//Here the for-loop only goes through 1 time since got the entire "America/New_York,Asia/Kolkata" string
+
+//Attempt 1
+/*
+type CurrentTime struct {
+	Current string `json:"current_time"`
+}
+
+func main() {
+	router := mux.NewRouter()
+
+	//routes
+	router.HandleFunc("/api/time", timeHandler).Methods(http.MethodGet)
+	router.HandleFunc("/api/time/{tz}", timezoneHandler).Methods(http.MethodGet)
+
+	//server
+	err := http.ListenAndServe("localhost:8080", router)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func timeHandler(w http.ResponseWriter, r *http.Request) {
+	loc, _ := time.LoadLocation("UTC")
+
+	w.Header().Add("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(CurrentTime{fmt.Sprint(time.Now().In(loc))})
+}
+
+func timezoneHandler(w http.ResponseWriter, r *http.Request) {
+	var currentTimes []CurrentTime
+	vars := mux.Vars(r) //calling fn from mux pkg //returns map of string to string
+
+	if len(vars) == 0 {
+		loc, _ := time.LoadLocation("UTC")
+		currentTimes = append(currentTimes, CurrentTime{fmt.Sprint(time.Now().In(loc))})
+	} else {
+		for _, v := range vars {
+			loc, err := time.LoadLocation(v)
+			if err != nil {
+				http.Error(w, "invalid timezone", http.StatusNotFound)
+				return
+			}
+			currentTimes = append(currentTimes, CurrentTime{fmt.Sprint(time.Now().In(loc))})
+		}
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(currentTimes)
+}
+*/
+
+//Mistake 1: mixing up query params (/api/time?tz=...) with different route (/api/time/...)
+//e.g. http://localhost:8080/api/time
+//e.g. http://localhost:8080/api/time?tz=America/New_York,Asia/Kolkata
+//Both would call timeHandler and return utc! Instead of second request calling timezoneHandler and return specific tz.
+
+//Mistake 2: encoding slice of struct as json
+//Output becomes:
+/*
+[
+    {
+        "current_time": "2023-08-18 11:26:50.5801895 -0400 EDT"
+    },
+    {
+        "current_time": "2023-08-18 20:56:50.5801895 +0530 IST"
+    }
+]
+*/
+
+//Notes:
+//				http.Error(w, "invalid timezone", http.StatusNotFound)
+//				return
+//same as
+//				w.WriteHeader(http.StatusNotFound)
+//				w.Write([]byte("invalid timezone"))
